@@ -12,25 +12,40 @@
   (v! point 1.0))
 (def-glsl-stage geom-glsl (&context :330 :geometry)
   "
-layout(points) in;
-layout(points, max_verticies=5) out;
+layout(lines) in;
+layout(line_strip, max_vertices=5) out;
 
 /**
 *	Main
 */
 void main()
 {
-	gl_PositionIn[0].xyz;
-  gl_Position = gl_ModelViewProjectionMatrix * vec4( gl_PositionIn[0].xyz, 1.0 );
+  gl_Position = vec4( gl_in[0].gl_Position.xyz, 1.0 );
+
+	EmitVertex();
+  gl_Position = vec4( gl_in[1].gl_Position.xyz, 1.0 );
+
+	EmitVertex();
+
+  gl_Position = vec4( -gl_in[0].gl_Position.x,
+                       gl_in[0].gl_Position.yz,
+                       1.0 );
+
+  EndPrimitive();
+
+	EmitVertex();
+  gl_Position = vec4( -gl_in[1].gl_Position.x,
+                       gl_in[1].gl_Position.yz,
+                       1.0 );
 
 	EmitVertex();
 
 	EndPrimitive();
 }" ())
 (defun-g frag ()
-  (v! 1.0 0.0 0.0 1.0))
+  (v! 1.0 1.0 0.0 1.0))
 
-(def-g-> main-prog (:points)
+(def-g-> main-prog (:lines)
   :vertex #'vert
   :geometry #'geom-glsl
   :fragment #'frag)
