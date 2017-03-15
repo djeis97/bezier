@@ -8,8 +8,15 @@
 (defparameter *lines-stream* nil)
 (defparameter *running* nil)
 
+
 (defun-g vert ((point :vec3))
   (v! point 1.0))
+
+(defun-g geom ()
+  (setq gl-position (v! 1.0 1.0 1.0 1.0))
+  (emit-vertex)
+  (values))
+
 (def-glsl-stage geom-glsl (&context :330 :geometry)
   "
 layout(lines) in;
@@ -42,13 +49,16 @@ void main()
 
 	EndPrimitive();
 }" ())
+
+
+
 (defun-g frag ()
   (v! 1.0 1.0 0.0 1.0))
 
 (def-g-> main-prog (:lines)
-  :vertex #'vert
-  :geometry #'geom-glsl
-  :fragment #'frag)
+  :vertex #'(vert :vec3)
+  :geometry #'(geom-glsl)
+  :fragment #'(frag))
 
 (defun step-demo ()
   (clear)
@@ -65,7 +75,7 @@ void main()
   (setf *lines-stream* (make-buffer-stream *lines* :retain-arrays t))
   (gl:depth-func :lequal)
   (loop :while (and *running* (not (shutting-down-p))) :do
-    (continuable
+    (livesupport:continuable
       (step-demo)
       (livesupport:update-repl-link))))
 
