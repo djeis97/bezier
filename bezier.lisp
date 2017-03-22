@@ -18,7 +18,8 @@
   (emit-vertex)
   (values))
 
-(def-glsl-stage geom-glsl (("color" (:vec4 (*))) &context :330 :geometry)
+(def-glsl-stage geom-glsl (("color" (:vec4 (*))) &uniform ("transform" :mat4)
+                                                 &context :330 :geometry)
   "
 layout(lines) in;
 layout(line_strip, max_vertices=5) out;
@@ -37,15 +38,15 @@ void main()
 	EmitVertex();
 
   EndPrimitive();
-  gl_Position = vec4( -gl_in[0].gl_Position.x,
-                       gl_in[0].gl_Position.yz,
-                       1.0 );
+  gl_Position = transform * vec4( -gl_in[0].gl_Position.x,
+                                   gl_in[0].gl_Position.yz,
+                                   1.0 );
   color_out = color[1];
 
 	EmitVertex();
-  gl_Position = vec4( -gl_in[1].gl_Position.x,
-                       gl_in[1].gl_Position.yz,
-                       1.0 );
+  gl_Position = transform * vec4( -gl_in[1].gl_Position.x,
+                                   gl_in[1].gl_Position.yz,
+                                   1.0 );
   color_out = color[0];
 	EmitVertex();
 
@@ -64,7 +65,7 @@ void main()
 
 (defun step-demo ()
   (clear)
-  (map-g #'main-prog *lines-stream*)
+  (map-g #'main-prog *lines-stream* :transform (m4:scale (v! 1.0 0.5 1.0)))
   (swap))
 
 (defun run-loop ()
