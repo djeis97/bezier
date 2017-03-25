@@ -9,6 +9,7 @@
 (defparameter *tess-lines* nil)
 (defparameter *tess-lines-stream* nil)
 (defparameter *running* nil)
+(defparameter *time* (get-internal-real-time))
 
 (defstruct-g g-poc
   (position :vec3 :accessor pos)
@@ -29,8 +30,9 @@ layout(isolines) in;
 
 void main()
 {
+  float t = gl_TessCoord.x;
   color_out = vec4(1.0, 0.0, 0.0, 1.0);
-  float OneMinusT = 1.0 - gl_TessCoord.x;
+  float OneMinusT = 1.0 - t;
   float b0 = OneMinusT*OneMinusT*OneMinusT;
   float b1 = 3.0*t*OneMinusT*OneMinusT;
   float b2 = 3.0*t*t*OneMinusT;
@@ -96,6 +98,12 @@ void main()
   :fragment #'(frag :vec4))
 
 (defun step-demo ()
+  (let* ((min-frame-time 1000/5)
+         (delta-time (- (get-internal-real-time) *time*)))
+    (when (< delta-time min-frame-time)
+      (sleep (/ (- min-frame-time delta-time) 1000))
+      (setf delta-time min-frame-time))
+    (incf *time* delta-time))
   (clear)
   (map-g #'main-prog *geom-lines-stream* :transform (m4:scale (v! 1.0 1.0 1.0)) :detail 20)
   (map-g #'tess-prog *tess-lines-stream*)
