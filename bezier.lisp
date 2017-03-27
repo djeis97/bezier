@@ -9,6 +9,7 @@
 (defparameter *tess-lines* nil)
 (defparameter *tess-lines-stream* nil)
 (defparameter *running* nil)
+(defparameter *verts* 05.0)
 (defparameter *time* (get-internal-real-time))
 
 (defstruct-g g-poc
@@ -24,14 +25,26 @@
 (defun-g vert ((point g-pc))
   (values (v! (pos point) 1.0)))
 
-(def-glsl-stage tess-eval (&context :400 :tess-eval)
+(def-glsl-stage tess-cont (&uniform ("verts" :float) &context :400 :tesselation-control)
+  "
+layout(vertices=4) out;
+
+void main()
+{
+  gl_TessLevelOuter[0] = 1.0;
+  gl_TessLevelOuter[1] = verts;
+}
+"
+  ())
+
+(def-glsl-stage tess-eval (&context :400 :tesselation-evaluation)
   "
 layout(isolines) in;
 
 void main()
 {
   float t = gl_TessCoord.x;
-  color_out = vec4(1.0, 0.0, 0.0, 1.0);
+  color_out = vec4(0.0, 0.5, 0.0, 1.0);
   float OneMinusT = 1.0 - t;
   float b0 = OneMinusT*OneMinusT*OneMinusT;
   float b1 = 3.0*t*OneMinusT*OneMinusT;
@@ -94,11 +107,12 @@ void main()
 
 (def-g-> tess-prog (:patches)
   :vertex #'(vert g-pc)
-  :tess-eval #'(tess-eval)
+  :tesselation-control #'(tess-cont)
+  :tesselation-evaluation #'(tess-eval)
   :fragment #'(frag :vec4))
 
 (defun step-demo ()
-  (let* ((min-frame-time 1000/5)
+  (let* ((min-frame-time 1000/4)
          (delta-time (- (get-internal-real-time) *time*)))
     (when (< delta-time min-frame-time)
       (sleep (/ (- min-frame-time delta-time) 1000))
@@ -106,7 +120,7 @@ void main()
     (incf *time* delta-time))
   (clear)
   (map-g #'main-prog *geom-lines-stream* :transform (m4:scale (v! 1.0 1.0 1.0)) :detail 20)
-  (map-g #'tess-prog *tess-lines-stream*)
+  (map-g #'tess-prog *tess-lines-stream* :verts *verts*)
   (swap))
 
 (defun run-loop ()
@@ -126,7 +140,6 @@ void main()
                       :dimensions 4))
   (setf *tess-lines-stream* (make-buffer-stream *tess-lines* :retain-arrays t))
   (%gl:patch-parameter-i :patch-vertices 4)
-  (%gl:patch-parameter-fv :patch-default-outer-level (c-array-pointer (make-c-array '(1.0 4.0 0.0 0.0))))
   (gl:depth-func :lequal)
   (loop :while (and *running* (not (shutting-down-p))) :do
     (livesupport:continuable
